@@ -9,6 +9,8 @@
  * @typedef {{x: number, y: number, z: number}} vec3
  */
 
+export const vector0 = { x: 0, y: 0 };
+
 /**
  * Clamps a value between min and max.
  *
@@ -85,7 +87,7 @@ export function smoothStep(e0, e1, x) {
  * @returns Squared distance between a and b
  */
 export function distSq(a, b) {
-	return (b.x - a.x) ** 2 + (b.y - a.y);
+	return (b.x - a.x) ** 2 + (b.y - a.y) ** 2;
 }
 
 /**
@@ -102,6 +104,16 @@ export function dist(a, b) {
 }
 
 /**
+ * Gets the magnitude of a vector
+ *
+ * @param {vec2} a
+ * @returns {number}
+ */
+export function length(a) {
+	return dist(a, { x: 0, y: 0 });
+}
+
+/**
  * Angle between two points
  *
  * @param {vec2} a
@@ -110,6 +122,92 @@ export function dist(a, b) {
  */
 export function angleBetween(a, b) {
 	return Math.atan2(b.y - a.y, b.x - a.x);
+}
+
+/**
+ * Returns the forward vector from an angle
+ *
+ * @param {number} angle - RAD
+ * @returns {vec2} Forward vector from angle
+ */
+export function forwardVector(angle) {
+	return { x: Math.cos(angle), y: Math.sin(angle) };
+}
+
+/**
+ * Calculates the vector 90* around
+ *
+ * @param {vec2} a
+ * @returns {vec2} Perpendicular vector
+ */
+export function perpVector(a) {
+	return {
+		x: a.y,
+		y: -a.x,
+	};
+}
+
+/**
+ * Adds two vectors
+ *
+ * @param {vec2} a
+ * @param {vec2} b
+ * @returns {vec2} Sum of Vector a add vector b
+ */
+export function addVectors(a, b) {
+	return { x: a.x + b.x, y: a.y + b.y };
+}
+
+/**
+ * Multiplies a vector by a scalar
+ *
+ * @param {vec2} a
+ * @param {number} b
+ * @return {vec2} Vector a times scalar b
+ */
+export function multiplyVector(a, b) {
+	return { x: a.x * b, y: a.y * b };
+}
+
+/**
+ * Clamps each element of a vector between two scalars
+ *
+ * @param {vec2} a
+ * @param {number} min
+ * @param {number} max
+ * @returns {vec2} clamped vector
+ */
+export function clampVector(a, min, max) {
+	return {
+		x: clamp(a.x, min, max),
+		y: clamp(a.y, min, max),
+	};
+}
+
+/**
+ * Lerps a vector from one to another
+ *
+ * @param {vec2} a
+ * @param {vec2} b
+ * @param {number} t
+ * @returns {vec2}
+ */
+export function lerpVector(a, b, t) {
+	return {
+		x: lerp(a.x, b.x, t),
+		y: lerp(a.y, b.y, t),
+	};
+}
+
+/**
+ * Returns the dot product of two vectors
+ *
+ * @param {vec2} a
+ * @param {vec2} b
+ * @returns {number} dot product of the vectors
+ */
+export function dot(a, b) {
+	return a.x * b.x + a.y * b.y;
 }
 
 /**
