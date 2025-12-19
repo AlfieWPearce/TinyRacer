@@ -159,6 +159,17 @@ export function addVectors(a, b) {
 }
 
 /**
+ * Subtracts two vectors
+ *
+ * @param {vec2} a
+ * @param {vec2} b
+ * @returns {vec2} vector a - vector b
+ */
+export function subtractVectors(a, b) {
+	return { x: a.x - b.x, y: a.y - b.y };
+}
+
+/**
  * Multiplies a vector by a scalar
  *
  * @param {vec2} a
