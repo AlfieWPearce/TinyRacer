@@ -1,0 +1,12 @@
+{
+	"name": "racer",
+	"version": "0.5.0",
+	"description": "Top-down arcade racing prototype with subtle drift physics and lap timing",
+	"type": "module",
+	"scripts": {
+		"dev": "npx serve .",
+		"format": "npx prettier . -- write"
+	},
+	"author": "Aflie",
+	"license": "MIT"
+}

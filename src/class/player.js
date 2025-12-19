@@ -1,7 +1,7 @@
 import * as tools from '../../dev-kit/src/index.js';
 import * as input from '../input.js';
 
-import { START_LINE, TRACK } from '../main.js';
+import { START_LINE, TRACK } from '../config/track.js';
 
 export default class Player {
 	constructor() {

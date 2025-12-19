@@ -1,5 +1,5 @@
 import * as maths from '../../dev-kit/src/math.js';
-import { TRACK } from '../main.js';
+import { TRACK } from '../config/track.js';
 
 export default class Camera {
 	constructor() {
