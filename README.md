@@ -17,7 +17,7 @@ A top-down arcade racing game prototype focused on responsive handling, and time
 - Arrow Left / Right - Steering
 - Space - Throttle
 
-## Running[
+## Running
 ([Play](https://alfiewpearce.github.io/TinyRacer/))
 
 ## Tech
