@@ -1,6 +1,6 @@
-import { formatTime } from '../../dev-kit/src/string.js';
 import Camera from './class/camera.js';
 import { TILE_PROPS } from './config/track.js';
+import { formatTime } from './dev-kit/src/string.js';
 import { GAME_STATE } from './states.js';
 import { isCCComplete, loadRecord } from './storage.js';
 

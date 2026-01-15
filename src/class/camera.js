@@ -1,4 +1,4 @@
-import * as maths from '../../dev-kit/src/math.js';
+import * as maths from '../dev-kit/src/math.js';
 
 export default class Camera {
 	constructor() {

@@ -1,7 +1,7 @@
-import * as tools from '../../dev-kit/src/index.js';
 import Player from './class/player.js';
 import Race from './class/race.js';
 import { CC_PROFILES, TRACKS } from './config/track.js';
+import * as tools from './dev-kit/src/index.js';
 import * as input from './input.js';
 import { GAME_STATE } from './states.js';
 import {

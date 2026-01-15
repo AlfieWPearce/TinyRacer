@@ -1,4 +1,4 @@
-import * as tools from '../../dev-kit/src/index.js';
+import * as tools from '../dev-kit/src/index.js';
 
 export default class Race {
 	constructor(level) {
