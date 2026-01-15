@@ -17,13 +17,8 @@ A top-down arcade racing game prototype focused on responsive handling, and time
 - Arrow Left / Right - Steering
 - Space - Throttle
 
-## Running
-
-Serve the folder with any static server:
-
-```bash
-npx serve .
-```
+## Running[
+([Play](https://alfiewpearce.github.io/TinyRacer/))
 
 ## Tech
 
