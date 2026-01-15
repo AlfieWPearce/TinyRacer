@@ -32,8 +32,9 @@ export function clamp(v, min, max) {
  * @returns {number} v wrapped between min and max
  */
 export function wrap(v, min, max) {
-	const r = max - min;
-	return ((((v - min) % r) + r) % r) + min;
+	if (v > max) v = min;
+	if (v < min) v = max;
+	return v;
 }
 
 /**

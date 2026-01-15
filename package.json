@@ -1,7 +1,7 @@
 {
 	"name": "racer",
-	"version": "0.5.0",
-	"description": "Top-down arcade racing prototype with subtle drift physics and lap timing",
+	"version": "1.0.0",
+	"description": "Top-down arcade racing prototype with tile-based tracks and lap timing",
 	"type": "module",
 	"scripts": {
 		"dev": "npx serve .",

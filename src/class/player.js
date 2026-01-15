@@ -1,13 +1,12 @@
 import * as tools from '../../dev-kit/src/index.js';
-import * as input from '../input.js';
-
-import { START_LINE, TRACK } from '../config/track.js';
 
 export default class Player {
-	constructor() {
-		this.pos = TRACK.playerStartPos;
+	constructor(cc, level) {
+		this.pos = tools.multiplyVector(level.start, level.tileSize);
 		this.vel = tools.vector0;
-		this.lookAngle = TRACK.playerStartAngle; //Rad
+		this.lookAngle = level.start.angle; //Rad
+
+		this.level = level;
 
 		this.width = 16;
 		this.height = 24;
@@ -17,6 +16,7 @@ export default class Player {
 
 		//Engine and speed
 		this.acc = 2200; // px/s/s
+		this.boost = 1;
 		this.minSpeed = 20; // px/s
 		this.maxSpeed = 1400; // px/s
 
@@ -35,48 +35,30 @@ export default class Player {
 		//Assist
 		this.lowSpeedAssist = 0.45;
 
-		//Lap state
-		this.lap = 1;
-		this.maxLaps = 3;
-		this.countdown = 3; // s
-		this.countdownActive = true;
-		this.raceStarted = false;
-		this.finished = false;
-		this.finishTime = 0;
-		this.lapTimes = [];
-		this.currentLapTime = 0;
-
-		this.wasOnLine = false;
-		this.hasLeftLine = false;
+		this.applyCC(cc);
 	}
 
-	update(dt) {
-		//Countdown logic
-		if (this.countdownActive) {
-			this.countdown -= dt;
-			if (this.countdown <= 0) {
-				this.countdown = 0;
-				this.countdownActive = false;
-			}
-			return;
-		}
-		//Stop if finished state
-		if (this.finished) return;
-		//Update lap time
-		this.currentLapTime += dt;
+	applyCC(cc) {
+		this.acc *= cc.acc;
+		this.maxSpeed *= cc.maxSpeed;
+		this.lateralGrip *= cc.grip;
+		this.turnSpeed *= cc.turn;
+	}
 
-		const keys = input.getKeys();
+	update(dt, keys) {
+		//Handles driving surface
+		const surface = this.level.getTilePropsAtWorld(
+			this.pos.x,
+			this.pos.y
+		);
 
-		//Handles road vs grass
-		const { onGrass } = this.surface();
-		let surfaceGrip = 1;
-		let surfaceDrag = 1;
-		let surfaceMaxSpeed = this.maxSpeed;
-		if (onGrass) {
-			surfaceGrip = 0.35;
-			surfaceDrag = 3.5;
-			surfaceMaxSpeed *= 0.1;
-		}
+		const surfaceGrip = surface.grip;
+		const surfaceDrag = surface.drag;
+		const surfaceMaxSpeed = this.maxSpeed * surface.maxSpeed;
+
+		this.boost -= dt * dt * 100;
+		this.boost = surface.boost ?? this.boost;
+		this.boost = tools.clamp(this.boost, 1, 10);
 
 		//Direction vectors
 		const forward = tools.forwardVector(this.lookAngle);
@@ -99,7 +81,7 @@ export default class Player {
 		if (keys.thrust) {
 			const engineForce = tools.multiplyVector(
 				forward,
-				this.acc * dt
+				this.acc * this.boost * dt
 			);
 			this.vel = tools.addVectors(this.vel, engineForce);
 		}
@@ -150,7 +132,10 @@ export default class Player {
 		);
 
 		//Velocity alignment assist
-		const alignStrength = tools.lerp(0.18, 0.04, speedNorm);
+		const alignStrength =
+			tools.lerp(0.18, 0.04, speedNorm) *
+			surfaceGrip *
+			(1 - Math.abs(lateralSpeed) / (speed + 1));
 		const desiredVel = tools.multiplyVector(forward, forwardSpeed);
 		this.vel = tools.lerpVector(
 			this.vel,
@@ -174,16 +159,7 @@ export default class Player {
 			this.vel = tools.lerpVector(
 				this.vel,
 				desiredVel,
-				this.lowSpeedAssist
-			);
-		}
-
-		//"Sticky" grass
-		if (onGrass) {
-			this.vel = tools.lerpVector(
-				this.vel,
-				{ ...tools.vector0 },
-				0.15 * dt * speedNorm
+				this.lowSpeedAssist * surfaceGrip
 			);
 		}
 
@@ -197,173 +173,62 @@ export default class Player {
 			this.vel = { ...tools.vector0 };
 
 		//Integrate
-		this.pos.x += this.vel.x * dt;
-		this.pos.y += this.vel.y * dt;
-
-		this.handleCollisions();
-		this.handleLaps();
+		this.step(this.vel.x * dt, 0);
+		this.step(0, this.vel.y * dt);
 	}
 
-	surface() {
-		const onOuter = tools.pointInEllipse(
-			this.pos.x,
-			this.pos.y,
-			TRACK.centre.x,
-			TRACK.centre.y,
-			TRACK.outer.rx,
-			TRACK.outer.ry
-		).inside;
+	step(dx, dy) {
+		const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)));
+		if (steps === 0) return;
 
-		const onInner = tools.pointInEllipse(
-			this.pos.x,
-			this.pos.y,
-			TRACK.centre.x,
-			TRACK.centre.y,
-			TRACK.inner.rx,
-			TRACK.inner.ry
-		).inside;
-
-		return {
-			onRoad: onOuter && !onInner,
-			onGrass: !(onOuter && !onInner),
-		};
-	}
-
-	handleCollisions() {
-		const { x: cx, y: cy } = TRACK.centre;
-
-		//Outer wall
-		const outerWall = tools.pointInEllipse(
-			this.pos.x,
-			this.pos.y,
-			cx,
-			cy,
-			TRACK.outer.rx + TRACK.edge,
-			TRACK.outer.ry + TRACK.edge
-		).outside;
-		if (outerWall) {
-			const normal = tools.ellipseNormal(
-				this.pos.x,
-				this.pos.y,
-				cx,
-				cy,
-				TRACK.outer.rx,
-				TRACK.outer.ry
-			);
-
-			//Push back onto track
-			this.pos.x -= normal.x;
-			this.pos.y -= normal.y;
-
-			//Kill velocity
-			const vn = tools.dot(this.vel, normal);
-			if (vn > 0) {
-				this.vel = tools.subtractVectors(
-					this.vel,
-					tools.multiplyVector(normal, vn)
-				);
+		const stepX = dx / steps;
+		const stepY = dy / steps;
+		for (let i = 0; i < steps; i++) {
+			//X step
+			this.pos.x += stepX;
+			if (this.isColliding()) {
+				this.pos.x -= stepX;
+				this.vel.x = 0;
+				this.vel.y *= 0.85;
+				break;
 			}
 
-			//Wall friction
-			this.vel = tools.multiplyVector(this.vel, 0.85);
-			return;
-		}
-
-		//Inner wall
-		const innerWall = tools.pointInEllipse(
-			this.pos.x,
-			this.pos.y,
-			cx,
-			cy,
-			TRACK.inner.rx - TRACK.edge,
-			TRACK.inner.ry - TRACK.edge
-		).inside;
-		if (innerWall) {
-			const normal = tools.ellipseNormal(
-				this.pos.x,
-				this.pos.y,
-				cx,
-				cy,
-				TRACK.inner.rx,
-				TRACK.inner.ry
-			);
-
-			//Push back onto track
-			this.pos.x += normal.x;
-			this.pos.y += normal.y;
-
-			//Kill velocity
-			const vn = tools.dot(this.vel, normal);
-			if (vn < 0) {
-				this.vel = tools.subtractVectors(
-					this.vel,
-					tools.multiplyVector(normal, vn)
-				);
+			//Y step
+			this.pos.y += stepY;
+			if (this.isColliding()) {
+				this.pos.y -= stepY;
+				this.vel.y = 0;
+				this.vel.x *= 0.4;
+				break;
 			}
-
-			//Wall friction
-			this.vel = tools.multiplyVector(this.vel, 0.85);
 		}
 	}
+	isColliding() {
+		const halfW = this.width / 2;
+		const halfH = this.height / 2;
+		const halfS = (halfW + halfH) / 4;
 
-	handleLaps() {
-		const onLine = tools.pointInRect(
-			this.pos.x,
-			this.pos.y,
-			START_LINE
-		);
+		const points = [
+			{
+				x: this.pos.x - halfS,
+				y: this.pos.y - halfS,
+			},
+			{
+				x: this.pos.x + halfS,
+				y: this.pos.y - halfS,
+			},
+			{
+				x: this.pos.x - halfS,
+				y: this.pos.y + halfS,
+			},
+			{
+				x: this.pos.x + halfS,
+				y: this.pos.y + halfS,
+			},
+		];
 
-		//Must be correct direction
-		const forward = tools.forwardVector(this.lookAngle);
-		const correctDirection =
-			tools.dot(forward, START_LINE.normal) > 0.5;
-
-		if (!onLine) {
-			this.hasLeftLine = true;
+		for (const p of points) {
+			if (this.level.isWallAtWorld(p.x, p.y)) return true;
 		}
-
-		if (
-			onLine &&
-			!this.wasOnLine &&
-			this.hasLeftLine &&
-			correctDirection
-		) {
-			//Lap concludes
-			if (!this.raceStarted) {
-				this.raceStarted = true;
-
-				this.wasOnLine = onLine;
-				return;
-			}
-			this.lap++;
-			this.lapTimes.push(this.currentLapTime);
-			this.currentLapTime = 0;
-			this.hasLeftLine = false;
-
-			if (this.lap > this.maxLaps) {
-				this.lap--;
-				this.finished = true;
-				this.finishTime = this.lapTimes.reduce(
-					(acc, a) => acc + a,
-					0
-				);
-			}
-		}
-
-		this.wasOnLine = onLine;
-	}
-
-	draw(ctx) {
-		ctx.save();
-		ctx.translate(this.pos.x, this.pos.y);
-		ctx.rotate(this.lookAngle);
-		ctx.fillStyle = '#f05050';
-		ctx.fillRect(
-			-this.height / 4,
-			-this.width / 4,
-			this.height / 2,
-			this.width / 2
-		);
-		ctx.restore();
 	}
 }

@@ -1,9 +1,8 @@
 import * as maths from '../../dev-kit/src/math.js';
-import { TRACK } from '../config/track.js';
 
 export default class Camera {
 	constructor() {
-		this.pos = TRACK.playerStartPos;
+		this.pos = { ...maths.vector0 };
 		this.vel = { ...maths.vector0 };
 
 		this.lookAhead = { ...maths.vector0 };
@@ -15,8 +14,6 @@ export default class Camera {
 
 	update(targetPos, targetVel, dt) {
 		const speed = maths.length(targetVel);
-
-		let lookAhead = { ...maths.vector0 };
 
 		if (speed > 5) {
 			const dir = maths.multiplyVector(targetVel, 1 / speed);
@@ -52,12 +49,5 @@ export default class Camera {
 			this.pos,
 			maths.multiplyVector(this.vel, dt)
 		);
-	}
-	/**
-	 * @deprecated
-	 */
-	setPosition(pos) {
-		this.x = pos.x;
-		this.y = pos.y;
 	}
 }

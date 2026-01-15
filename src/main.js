@@ -1,12 +1,18 @@
-import Camera from './class/camera.js';
-import Player from './class/player.js';
-import { loop } from './game.js';
-import * as renderer from './renderer.js';
+import Game from './game.js';
+import Renderer from './renderer.js';
 
-export const { canvas, ctx } = renderer.getCanvas();
-renderer.setSize(canvas, 256, 256);
+const game = new Game();
+const renderer = new Renderer(game);
+game.renderer = renderer;
 
-export const car = new Player();
-export const camera = new Camera();
+let last = performance.now();
+function loop(now) {
+	let dt = Math.min((now - last) / 1000, 0.033); //Clamp dt to 33ms | ~30fps
+	last = now;
 
+	game.update(dt);
+	renderer.render();
+
+	requestAnimationFrame(loop);
+}
 requestAnimationFrame(loop);

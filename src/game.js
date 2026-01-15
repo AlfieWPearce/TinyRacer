@@ -1,45 +1,123 @@
-import { START_LINE, TRACK } from './config/track.js';
-import { camera, canvas, car, ctx } from './main.js';
-import { drawEffects } from './render/effects.js';
-import { drawHud } from './render/hud.js';
-import { drawOvalBackground } from './render/track.js';
+import * as tools from '../../dev-kit/src/index.js';
+import Player from './class/player.js';
+import Race from './class/race.js';
+import { CC_PROFILES, TRACKS } from './config/track.js';
+import * as input from './input.js';
+import { GAME_STATE } from './states.js';
+import {
+	clearStorage,
+	isCCComplete,
+	isCCFullyCleared,
+	loadRecord,
+	markCCComplete,
+	saveRecord,
+} from './storage.js';
 
-let last = performance.now();
-export function loop(now) {
-	let dt = Math.min((now - last) / 1000, 0.033); //Clamp dt to 33ms | ~30fps
-	last = now;
+export default class Game {
+	constructor() {
+		this.state = GAME_STATE.MENU;
 
-	update(dt);
-	render();
+		this.trackIndex = 0;
+		this.track = TRACKS[this.trackIndex];
 
-	requestAnimationFrame(loop);
-}
+		this.car = null;
+		this.race = null;
 
-function update(dt) {
-	car.update(dt);
+		this.next = false;
+		this.last = false;
+		this.confirm = false;
+	}
+	update(dt) {
+		const inputs = input.getKeys();
+		if (this.state == GAME_STATE.MENU) {
+			if (inputs.delete) clearStorage();
+			if (inputs.next && !this.next) {
+				this.trackIndex++;
+				this.next = true;
+			} else if (!inputs.next) this.next = false;
 
-	camera.update({ ...car.pos }, { ...car.vel }, dt);
-}
+			if (inputs.last && !this.last) {
+				this.trackIndex--;
+				this.last = true;
+			} else if (!inputs.last) this.last = false;
 
-function render() {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
+			this.trackIndex = tools.wrap(
+				this.trackIndex,
+				0,
+				TRACKS.length - 1
+			);
+			this.track = TRACKS[this.trackIndex];
 
-	//Background
-	ctx.fillStyle = '#bbb';
-	ctx.fillRect(0, 0, canvas.width, canvas.height);
+			const unlocked =
+				!this.track.unlocksAfter ||
+				isCCComplete(this.track.unlocksAfter);
+			if (inputs.confirm && !this.confirm && unlocked) {
+				this.startRace();
+				this.confirm = true;
+			} else if (!inputs.confirm) this.confirm = false;
+			return;
+		}
 
-	ctx.save();
-	ctx.translate(
-		canvas.width / 2 - camera.pos.x,
-		canvas.height / 2 - camera.pos.y
-	);
+		//Stop if finished state
+		if (!this.race.finished) {
+			if (!this.race.countdownActive)
+				this.car.update(dt, inputs);
+			this.race.handleLaps(
+				this.car.pos,
+				this.car.lookAngle,
+				dt
+			);
+		} else {
+			this.race.updateFinishTimer(dt);
+			if (!this.race.finishCountdownActive) {
+				this.endRace();
+				this.confirm = true;
+				return;
+			}
+		}
 
-	drawOvalBackground(ctx, TRACK, START_LINE);
-	drawEffects(ctx, car);
+		this.renderer.camera.update(
+			{ ...this.car.pos },
+			{ ...this.car.vel },
+			dt
+		);
+	}
 
-	car.draw(ctx);
+	startRace() {
+		this.track = TRACKS[this.trackIndex];
+		this.car = new Player(
+			CC_PROFILES[this.track.cc],
+			this.track.level
+		);
+		this.race = new Race(this.track);
+		this.state = GAME_STATE.RACE;
+	}
+	endRace() {
+		const finishTime = this.race.finishTime;
+		const bestLap = Math.min(...this.race.lapTimes);
 
-	ctx.restore();
+		const previous = loadRecord(this.track.id);
 
-	drawHud(ctx, canvas, car);
+		let record = {
+			bestTime: finishTime,
+			bestLap,
+		};
+
+		if (previous) {
+			record.bestTime = Math.min(
+				previous.bestTime,
+				finishTime
+			);
+			record.bestLap = Math.min(previous.bestLap, bestLap);
+		}
+
+		saveRecord(this.track.id, record);
+
+		if (isCCFullyCleared(this.track.cc, TRACKS))
+			markCCComplete(this.track.cc);
+
+		this.car = null;
+		this.race = null;
+		this.state = GAME_STATE.MENU;
+	}
 }
